@@ -96,15 +96,19 @@ void driveMotors(int32_t dutyR, int32_t dutyL) {
   // 右モーター
   //------------------------
   if (dutyR > 0) {                              // 正転させるとき
-    digitalWrite(MOTOR_AIN1_PIN, HIGH);
-    digitalWrite(MOTOR_AIN2_PIN, LOW);          // CW
+    //digitalWrite(MOTOR_AIN1_PIN, HIGH);           //通常版
+    //digitalWrite(MOTOR_AIN2_PIN, LOW);          // CW
+    digitalWrite(MOTOR_AIN1_PIN, LOW);
+    digitalWrite(MOTOR_AIN2_PIN, HIGH);          // CW    
   } else if (dutyR == 0) {
     digitalWrite(MOTOR_AIN1_PIN, LOW);
     digitalWrite(MOTOR_AIN2_PIN, LOW);          // フリーストップ
   } else {                                      // 逆転させるとき
     dutyR *= -1;
-    digitalWrite(MOTOR_AIN1_PIN, LOW);
-    digitalWrite(MOTOR_AIN2_PIN, HIGH);         // CCW
+    //digitalWrite(MOTOR_AIN1_PIN, LOW);           //通常版
+    //digitalWrite(MOTOR_AIN2_PIN, HIGH);          // CCW    
+    digitalWrite(MOTOR_AIN1_PIN, HIGH);
+    digitalWrite(MOTOR_AIN2_PIN, LOW);         // CCW
   }
   if (dutyR > DUTY_RESOLUTION) {                // 指定値がオーバーフローしているとき
     dutyR = DUTY_RESOLUTION;
@@ -335,6 +339,7 @@ void loop() {
     //calcState();
   }
 
+/*
   // ROSへの周期的なパブリッシュ
   if (getTime() >= 50) {
     startTimer();
@@ -374,6 +379,7 @@ void loop() {
     }
   }
   nh.spinOnce();
+*/
 }
 
 
