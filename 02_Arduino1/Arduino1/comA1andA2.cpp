@@ -87,13 +87,10 @@ int8_t *getQueueName(queueType *que) {
 static queue_t bufCode2[SIZE_OF_CODE2 + 1];
 static queueType queueCode2 = {bufCode2, SIZE_OF_CODE2 + 1, 0, 0, "queueCode2"};
 
-// Arduino2の状態量ポインタ（I2C受信割込みで使用）
-static arduino2StateType *a2st_pointer;
-
 /***********************************************************************/
 /*                                関数                                 */
 /***********************************************************************/
-void initComA1andA2(uint8_t select, arduino2StateType *a2st) {
+void initComA1andA2(uint8_t select) {
   uint8_t temp;
   if (select == SLAVE) {
     //Serial.println("I2C Slave!");
@@ -103,8 +100,6 @@ void initComA1andA2(uint8_t select, arduino2StateType *a2st) {
     //Serial.println("I2C Master!");
     Wire.begin(); // join i2c bus (address optional for master)
   }
-  // Arduino2の状態量のポインタアドレスを設定
-  a2st_pointer = a2st;
 }
 
 // 32bitのデータを変換する
@@ -254,7 +249,7 @@ uint8_t isI2Crecieved(void) {
 
 
 // スレーブ側の受信動作（Arduino1）
-uint8_t i2cSlaveRecieve(void) {
+uint8_t i2cSlaveRecieve(arduino2StateType *A2state) {
   i2cRecievedFlag = 0;
   while (!isQueueEmpty(&queueCode2)) {
     dequeue(&queueCode2);
@@ -263,7 +258,7 @@ uint8_t i2cSlaveRecieve(void) {
     byte c = Wire.read(); // receive byte as a character
     if (!enqueue(&queueCode2, c)) return(0);
   }
-  if(!decode2(a2st_pointer)) {  // エンコーダ値を更新
+  if(!decode2(A2state)) {  // エンコーダ値を更新
     Serial.println("failed to decode2");
     return(0);
   }

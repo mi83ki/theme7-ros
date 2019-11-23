@@ -121,12 +121,12 @@ typedef union uint32u {
   } cnt7;
 } uint32uType;
 
-void initComA1andA2(uint8_t select, arduino2StateType *a2st);
+void initComA1andA2(uint8_t select);
 // マスター側の送信動作（Arduino2）
 uint8_t i2cMasterTransmit(arduino2StateType a2st);
 // スレーブ側の受信割込み動作（Arduino1）
 void i2cRecieveInterrupt(void);
-uint8_t i2cSlaveRecieve(void);
+uint8_t i2cSlaveRecieve(arduino2StateType *A2state);
 // I2Cで受信データが更新されたかどうか
 uint8_t isI2Crecieved(void);
 

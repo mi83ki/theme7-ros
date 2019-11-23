@@ -26,8 +26,6 @@
 /***********************************************************************/
 /*                           グローバル変数                            */
 /***********************************************************************/
-// Arduino2の状態量
-static arduino2StateType A2state;
 
 /***********************************************************************/
 /*                           モーター関数                              */
@@ -313,18 +311,28 @@ void setup() {
   // バンパーの設定
   initBumper();
   // Arduino2とのI2C通信設定
-  initComA1andA2(SLAVE, &A2state);
+  initComA1andA2(SLAVE);
 }
 
 void loop() {
   uint8_t bumperStatus = 0;
   static uint32_t startedTime;
   static uint8_t encUpdFlag = 0;
+  static uint8_t encUpdFlag2 = 0;
+  // Arduino2の状態量
+  static arduino2StateType A2state;
 
   // エンコーダ値更新処理
   if (isI2Crecieved()) {
-    i2cSlaveRecieve();
+    i2cSlaveRecieve(&A2state);
     encUpdFlag++;
+    encUpdFlag2++;
+  }
+
+  // 速度の計算
+  if (encUpdFlag2) {
+    encUpdFlag2 = 0;
+    //calcState();
   }
 
   // ROSへの周期的なパブリッシュ
