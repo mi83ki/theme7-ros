@@ -1,6 +1,6 @@
 /***********************************************************************/
 /*                                                                     */
-/*  FILE        :pid.h                                                 */
+/*  FILE        :pid.hpp                                               */
 /*  DATE        :2017/3/18                                             */
 /*  DESCRIPTION :PID制御に関する関数を揃えたヘッダ                     */
 /*  CPU TYPE    :EV3                                                   */
@@ -49,7 +49,7 @@
 #ifndef _PID_H__
 #define _PID_H__
 
-#include "fix.h"
+#include "fix.hpp"
 
 #define MAX_OF_S32BIT  2147483647  /* 符号あり32ビットの最大値 */
 #define MAX_OF_S64BIT 9223372036854775807 /* 符号あり64ビットの最大値 */
@@ -74,11 +74,14 @@
 #endif
 
 /***********************************************************************/
-
+typedef enum ePID {
+  KKK,
+  KTT
+} pidGainType;
 
 typedef struct pid {        /* PID制御に関する構造体 */
   uint8_t en;             /* 有効かどうか */
-  enum ePID {KKK, KTT} mode;    /* Kp,Ki,KdかKp,Ti,Tdどっちか */
+  pidGainType mode;    /* Kp,Ki,KdかKp,Ti,Tdどっちか */
   struct {
     fix p;                          /* 比例ゲイン */
     fix i;                          /* 積分ゲイン or 積分時間 */
@@ -92,6 +95,9 @@ typedef struct pid {        /* PID制御に関する構造体 */
   fix desired;            /* 目標値 */
 } pidType;
 
+void initPID(pidType *pid, uint8_t md, fix *pre, fix des, float p, float i, float d);
+fix pidControl(pidType *pid, int16_t freq);
+char fixcutoff(fix *val, fix max, fix min);
 
 #endif
 

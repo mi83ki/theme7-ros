@@ -51,8 +51,16 @@
 #ifndef _QUEUE_H__
 #define _QUEUE_H__
 //#include <arduino.h>
+#include "fix.hpp"
 
 typedef byte queue_t;	/* 格納データの型 */
+
+typedef struct arduino1_state{
+  fix omega_right;
+  fix omega_left;
+  fix vel_right;
+  fix vel_left;
+} arduino1StateType;
 
 typedef struct queue {
   queue_t *data;				/* データ格納用の配列を指すポインタ */

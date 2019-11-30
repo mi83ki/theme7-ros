@@ -1,6 +1,6 @@
 /***********************************************************************/
 /*                                                                     */
-/*  FILE        :pid.c                                                 */
+/*  FILE        :pid.cpp                                               */
 /*  DATE        :2017/3/18                                             */
 /*  DESCRIPTION :PID制御に関する関数を揃えたソース                     */
 /*  CPU TYPE    :EV3                                                   */
@@ -12,7 +12,7 @@
 #ifndef _PID_C__
 #define _PID_C__
 
-#include "pid.h"
+#include "pid.hpp"
 
 #ifndef _MYSTDLIB_C__
 
