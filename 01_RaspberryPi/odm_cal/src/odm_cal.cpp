@@ -105,6 +105,7 @@ void OdmPublisher::InitOdm()
 {
     pre_time = 0;
     pre_agv_vel = 0.0;
+    odmType odm_state = {0.0};
     encType pre_enc = {0};
     odmType pre_odm_state = {0.0};
 }
@@ -159,6 +160,15 @@ void OdmPublisher::Time_Callback(const std_msgs::UInt32Ptr& time_msg)
 
   float_t delta_t = (time - pre_time) * 0.001;
   ROS_INFO("[odm_cal] dt = %f", delta_t);
+
+  /* 初回受信時 */
+  if (pre_time == 0) {
+      pre_enc.L = enc.L;
+      pre_enc.R = enc.R;
+      pre_time = time;
+
+      return;
+  }
 
   pre_enc.L = enc.L;
   pre_enc.R = enc.R;
