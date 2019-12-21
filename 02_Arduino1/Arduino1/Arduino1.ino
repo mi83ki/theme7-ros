@@ -319,7 +319,7 @@ void setup() {
 
   initPID(&pid_state_right, KTT, &A1state.vel_right, FLOAT_TO_FIX(0.5), 0.3, 1.5, 0.0);
   initPID(&pid_state_left, KTT, &A1state.vel_left, FLOAT_TO_FIX(0.5), 0.3, 1.5, 0.0);
-  Serial.begin(115200);
+  //Serial.begin(115200);
   delay(1000);
 }
 
@@ -376,7 +376,7 @@ void loop() {
   }
 
 
-  /*
+  
     // ROSへの周期的なパブリッシュ
     if (getTime() >= 50) {
       startTimer();
@@ -416,7 +416,7 @@ void loop() {
       }
     }
     nh.spinOnce();
-  */
+  
 }
 
 
