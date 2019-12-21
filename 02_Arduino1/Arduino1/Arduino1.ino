@@ -317,8 +317,8 @@ void setup() {
   // Arduino2とのI2C通信設定
   initComA1andA2(SLAVE);
 
-  initPID(&pid_state_right, KTT, &A1state.vel_right, FLOAT_TO_FIX(0.5), 0.1, 0.0, 0.0);
-  initPID(&pid_state_left, KTT, &A1state.vel_left, FLOAT_TO_FIX(0.5), 0.1, 0.0, 0.0);
+  initPID(&pid_state_right, KTT, &A1state.vel_right, FLOAT_TO_FIX(0.5), 0.3, 1.5, 0.0);
+  initPID(&pid_state_left, KTT, &A1state.vel_left, FLOAT_TO_FIX(0.5), 0.3, 1.5, 0.0);
   Serial.begin(115200);
   delay(1000);
 }
@@ -330,7 +330,7 @@ void loop() {
   static uint8_t encUpdFlag2 = 0;
   // Arduino2の状態量
   static arduino2StateType A2state;
-  SpeedControll spdControll;
+  SpeedControll spdControll;        //速度制御インスタンス生成
   fix power_right = 10;
   fix power_left = 10;
   pid_state_right.desired = FLOAT_TO_FIX(0.5);
@@ -347,23 +347,24 @@ void loop() {
   // 速度の計算
   if (encUpdFlag2) {
     encUpdFlag2 = 0;
-    spdControll.calcSpeed(A2state, &A1state);
+    spdControll.calcSpeed(A2state, &A1state);        //現在速度の計算
     power_right = pidControl(&pid_state_right, FILT_FREQ);
     power_left = pidControl(&pid_state_left, FILT_FREQ);
-    Serial.print("power:");
-    Serial.print(FIX_TO_FLOAT(power_right));
-    Serial.print(',');
-    Serial.print(FIX_TO_FLOAT(power_left));
-    Serial.print(',');
-    Serial.print("time:");
-    Serial.print(A2state.time);
-    Serial.print(',');
+    //Serial.print("power:");
+    //Serial.print(FIX_TO_FLOAT(power_right));
+    //Serial.print(',');
+    //Serial.print(FIX_TO_FLOAT(power_left));
+    //Serial.print(',');
+    //Serial.print("time:");
+    //Serial.print(A2state.time);
+    //Serial.print(',');
     
 //    fixcutoff(&power_right, INT_TO_FIX(100), -INT_TO_FIX(100));
 //    fixcutoff(&power_left, INT_TO_FIX(100), -INT_TO_FIX(100));
 
     spdControll.controllMotorsSpeed(power_right, power_left, A1state);
     driveMotors(spdControll.duty_status.duty_right, spdControll.duty_status.duty_left);
+    //driveMotors(100, 100);
     /*Serial.print("aim_vel,");
       Serial.print(FIX_TO_FLOAT(pid_state_right.desired));
       Serial.print(',');

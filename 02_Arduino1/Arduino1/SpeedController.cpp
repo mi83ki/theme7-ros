@@ -12,37 +12,59 @@ SpeedControll::~SpeedControll()
 
 //arduino2のエンコーダ値と時間からタイヤの速度[m/s][rad/s]を更新する
 void SpeedControll::calcSpeed(arduino2StateType A2state, arduino1StateType *A1st) {
-  static int32_t last_encR = 0;
-  static int32_t last_encL = 0;
+  static int32_t last_encR = 0;        //前回のエンコーダ値
+  static int32_t last_encL = 0;        //前回のエンコーダ値
+  static int32_t sum_encR = 0;         //100ms のエンコーダ値の積算値
+  static int32_t sum_encL = 0;         //100ms のエンコーダ値の積算値
   static uint32_t last_time = 0;       // ms
+  static uint32_t sum_time = 0;       // ms
   static const fix myPI = FLOAT_TO_FIX(M_PI);
   static const fix myTireDiameter = FLOAT_TO_FIX(TIRE_DIAMETER);
   static const fix myGearRagtio = INT_TO_FIX(GEAR_RATIO);
   static const fix myEncoderPulse = INT_TO_FIX(ENCODER_PULSE);
-  static const fix temp = FIX_MUL(myGearRagtio, myEncoderPulse); //ok
-  static const fix temp2 = FIX_MUL(myTireDiameter, myPI);        //ok
+  static const fix temp = FIX_MUL(myGearRagtio, myEncoderPulse);     
   static fix diff_time = 0;       // m/s
 
   diff_time = INT_TO_FIX(A2state.time - last_time) / 1000;
 
-//  Serial.print("diff_time:");
-//  Serial.print(FIX_TO_FLOAT(diff_time));
-//  Serial.print(',');
-
+  //前回との差分の積算
+  sum_time += diff_time;
+  sum_encR += A2state.encR - last_encR;
+  sum_encL += A2state.encL - last_encL;
+  
   if (diff_time != 0) {
-    A1st->omega_right = 2 * FIX_MUL(INT_TO_FIX(A2state.encR - last_encR), myPI);
-    A1st->omega_right = FIX_DIV(A1st->omega_right, FIX_MUL(temp, diff_time));
-    A1st->omega_left = 2 * FIX_MUL(INT_TO_FIX(A2state.encL - last_encL), myPI);
-    A1st->omega_left = FIX_DIV(A1st->omega_left, FIX_MUL(temp, diff_time));
+    if(sum_time >= 100)
+    {
+/*
+      Serial.print("sum_time:");
+      Serial.print(sum_time);
+      Serial.print(',');
+      Serial.print("sum_encR:");
+      Serial.print(sum_encR);
+      Serial.print(',');
+      Serial.print("sum_encL:");
+      Serial.print(sum_encL);
+      Serial.print(',');
+      Serial.print("now_encR:");
+      Serial.print(A2state.encR);
+      Serial.print(',');
+      Serial.print("now_encL:");
+      Serial.println(A2state.encL);      
+*/
+      //角速度の計算
+      A1st->omega_right = 2 * FIX_MUL(INT_TO_FIX(sum_encR), myPI);
+      A1st->omega_right = FIX_DIV(A1st->omega_right, FIX_MUL(temp, sum_time));
+      A1st->omega_left = 2 * FIX_MUL(INT_TO_FIX(sum_encL), myPI);
+      A1st->omega_left = FIX_DIV(A1st->omega_left, FIX_MUL(temp, sum_time));
 
-    A1st->vel_right = FIX_MUL(A1st->omega_right, (myTireDiameter / 2));
-    A1st->vel_left = FIX_MUL(A1st->omega_left, (myTireDiameter / 2));
+      //速度の計算
+      A1st->vel_right = FIX_MUL(A1st->omega_right, (myTireDiameter / 2));
+      A1st->vel_left = FIX_MUL(A1st->omega_left, (myTireDiameter / 2));
 
-    Serial.print("present:");
-    Serial.print(FIX_TO_FLOAT(A1st->vel_right));
-    Serial.print(',');
-    Serial.print(FIX_TO_FLOAT(A1st->vel_left));
-    Serial.println(',');
+      sum_time = 0;
+      sum_encR = 0;
+      sum_encL = 0;
+    }
   }
 
   last_encR = A2state.encR;
@@ -61,24 +83,21 @@ void SpeedControll::controllMotorsSpeed(fix torque_pid_right, fix torque_pid_lef
   static const fix myDutyResolution = INT_TO_FIX(DUTY_RESOLUTION_);
   static const fix temp = FIX_DIV(myDutyResolution, myMaxVolt);
 
+  //デューティ比計算
   duty_right = (FIX_MUL(myResistance, torque_pid_right) / KR_TORQUE) + FIX_MUL(myKeVolt, A1st.omega_right);
-//  Serial.print("duty1:");
-//  Serial.print(FIX_TO_INT(duty_right));
-//  Serial.print(',');
-  duty_right = FIX_MUL(duty_right, temp);
   duty_left = (FIX_MUL(myResistance, torque_pid_left) / KR_TORQUE) + FIX_MUL(myKeVolt, A1st.omega_left);
-//  Serial.print(FIX_TO_INT(duty_left));
-//  Serial.print(',');
+  duty_right = FIX_MUL(duty_right, temp);
   duty_left = FIX_MUL(duty_left, temp);
 
+  //デューティ比の最大・最小値制限
   fixcutoff(&duty_right, INT_TO_FIX(100), -INT_TO_FIX(100));
   fixcutoff(&duty_left, INT_TO_FIX(100), -INT_TO_FIX(100));
     
-  Serial.print("duty:");
-  Serial.print(FIX_TO_INT(duty_right));
-  Serial.print(',');
-  Serial.print(FIX_TO_INT(duty_left));
-  Serial.print(',');
+//  Serial.print("duty:");
+//  Serial.print(FIX_TO_INT(duty_right));
+//  Serial.print(',');
+//  Serial.print(FIX_TO_INT(duty_left));
+//  Serial.print(',');
 
   duty_status.duty_right = FIX_TO_INT(duty_right);
   duty_status.duty_left = FIX_TO_INT(duty_left);
