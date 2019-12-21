@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(beginner_tutorials)
+project(runtest)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -124,8 +124,8 @@ include_directories(
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/beginner_tutorials.cpp
 # )
- add_executable(listener src/listener.cpp)
- target_link_libraries(listener
+ add_executable(runtest src/runtest.cpp)
+ target_link_libraries(runtest
    ${catkin_LIBRARIES}
  )
 

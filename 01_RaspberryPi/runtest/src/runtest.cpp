@@ -3,22 +3,25 @@
 #include "turtlesim/Pose.h"
 #include "geometry_msgs/Twist.h"
 #include "math.h"
+#include "nav_msgs/Odometry.h"
 
-#define GET_ARRAY_SIZE(a)   (sizeof(a)/sizeof(a[0]))
+#define GET_ARRAY_SIZE(a)   (sizeof(a)/sizeof(a[0]))//
 
-turtlesim::Pose input_msg;//subscribeしてくるpose型のメッセージを定義
+nav_msgs::Odometry input_msg;//subscribeしてくるpose型のメッセージを定義
 geometry_msgs::Twist output_msg;//publish message
 
 float kp1 = 0; //P制御の定数
 float kp2 = 0; //P制御の定数2
-float theta_n = 0;
+float angular_n = 0;
 int point_id = 0;
 int mode = 0; //0…角度修正モード 1…走行モードt
-int point_array[5][2] = {{6,6},{8,6},{8,8},{6,8},{6,6}};//pass point array
+float point_array[5][2] = {{0,0},{0.9,0},{0.9,0.9},{0,0.9},{0,0}};//pass point array {x,y}
 
-float calc_theta(const float x,const float xn1,const float y,const float yn1);
-void poseCallback(const turtlesim::Pose::ConstPtr& msg);
-void poseCallback(const turtlesim::Pose::ConstPtr& msg)
+float calc_angle(const float x,const float xn1,const float y,const float yn1);
+void poseCallback(const nav_msgs::Odometry::ConstPtr& msg);
+
+
+void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
    input_msg = *msg;
  //  ROS_INFO("Pose: [%f],[%f],[%f]", msg->x,msg->y,msg->theta);
@@ -30,24 +33,24 @@ int main(int argc, char **argv)
     //現在位置X,Y,角度θをもらう
 	ros::init(argc, argv, "listener");
 	ros::NodeHandle n;
-        ros::Subscriber sub = n.subscribe("turtle1/pose", 10, poseCallback); //角度，速度を読んでくるsubscriberを定義
-        ros::Publisher cmd_pub= n.advertise<geometry_msgs::Twist>("turtle1/cmd_vel",1000);//角度,速度を配信するpublisherを定義
+        ros::Subscriber sub = n.subscribe("odm_cal", 10, poseCallback); //角度，速度を読んでくるsubscriberを定義
+        ros::Publisher cmd_pub= n.advertise<geometry_msgs::Twist>("arduino_cmd_vel",1000);//角度,速度を配信するpublisherを定義
         ros::Rate loop_rate(10); 
 
         while (ros::ok())
         {
-            if( point_id <= GET_ARRAY_SIZE(point_array) -1 ){
-                turtlesim::Pose pose_msg = input_msg;//publishするtwist型のメッセージを定義
+            if( point_id <= GET_ARRAY_SIZE(point_array) -1 ){https://kazuhira-r.hatenablog.com/entry/20180728/1532770315
+                nav_msgs::Odometry pose_msg = input_msg;//publishするtwist型のメッセージを定義
                 float xn = point_array[point_id][0];
                 float yn = point_array[point_id][1];
                 switch(mode){
                    case 0:
                     output_msg.angular.z = 0.5;
-                    theta_n = calc_theta(pose_msg.x,xn,pose_msg.y,yn);
-                    ROS_INFO("I wan to go xn:[%f] yn:[%f]",xn,yn);
-                    ROS_INFO("x:[%f] y:[%f]",pose_msg.x,pose_msg.y);
-                    ROS_INFO("mode:[%d] theta:[%f] theta_n:[%f] abs(pose_msg.theta - theta_n):[%f]",mode,pose_msg.theta ,theta_n,std::abs(pose_msg.theta - theta_n));
-                    if(std::abs(pose_msg.theta - theta_n) < 0.05 )
+                    angular_n = calc_angle(pose_msg.pose.pose.position.x,xn,pose_msg.pose.pose.position.y,yn);
+                    ROS_INFO("I want to go xn:[%f] yn:[%f]",xn,yn);
+                    ROS_INFO("x:[%f] y:[%f]",pose_msg.pose.pose.position.x,pose_msg.pose.pose.position.y);
+                    ROS_INFO("mode:[%d] theta:[%f] angular_n:[%f] abs(pose_msg.theta - angular_n):[%f]",mode,pose_msg.twist.twist.angular.z ,angular_n,std::abs(pose_msg.twist.twist.angular.z - angular_n));
+                    if(std::abs(pose_msg.twist.twist.angular.z - angular_n) < 0.05 )
                     {
 
                       mode = 1;
@@ -57,7 +60,7 @@ int main(int argc, char **argv)
                     break;
                    case 1:
                     output_msg.linear.x = 1;
-                    if((std::abs(pose_msg.x -xn) < 0.1) && (std::abs(pose_msg.y -yn) < 0.1))
+                    if((std::abs(pose_msg.pose.pose.position.x -xn) < 0.1) && (std::abs(pose_msg.pose.pose.position.y -yn) < 0.1))
                     {
                        mode = 0;
                        output_msg.linear.x = 0;
@@ -86,7 +89,7 @@ int main(int argc, char **argv)
 //}
  //ωpを計算する関数
 
-float calc_theta(const float x,const float xn1,const float y,const float yn1){ //calculate theta to Goal
+float calc_angle(const float x,const float xn1,const float y,const float yn1){ //calculate theta to Goal
     float theta;
     theta = std::atan2((yn1 - y),(xn1 - x));
     if(theta < 0){

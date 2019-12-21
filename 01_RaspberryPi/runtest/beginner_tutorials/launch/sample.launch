@@ -1,3 +1,0 @@
-<launch>
-    <node pkg="beginner_tutorials" name="listener" type="listener" output = "screen"/>
-</launch>
