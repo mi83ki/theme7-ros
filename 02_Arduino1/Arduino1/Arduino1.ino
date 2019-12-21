@@ -19,7 +19,7 @@
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/UInt32.h>
-#include <std_msgs/UInt8.h>
+#include <std_msgs/Bool.h>
 
 #include "comA1andA2.hpp"
 
@@ -278,7 +278,7 @@ ros::Subscriber<geometry_msgs::Twist> sub2("arduino_cmd_vel", &messageCb2);
 //         バンパーステータスののパブリッシャー
 //-------------------------------------------------------
 // バンパートピック
-std_msgs::UInt8 bumper_msg;
+std_msgs::Bool bumper_msg;
 ros::Publisher pubBumper("Bumper", &bumper_msg);
 
 
@@ -357,7 +357,7 @@ void loop() {
     } else {                    // rosserialが接続しているときの動作
       // バンパー値をパブリッシュ
       if (isBumperChanged(&bumperStatus)) {
-        bumper_msg.data = bumperStatus;
+        bumper_msg.data = (bumperStatus == 0) ? false : true;
         pubBumper.publish(&bumper_msg);
       }
 
@@ -375,5 +375,3 @@ void loop() {
   }
   nh.spinOnce();
 }
-
-
