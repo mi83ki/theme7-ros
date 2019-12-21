@@ -59,7 +59,10 @@ int main(int argc, char **argv)
                     }
                     break;
                    case 1:
-                    output_msg.linear.x = 1;
+                    ROS_INFO("I want to go xn:[%f] yn:[%f]",xn,yn);
+                    ROS_INFO("x:[%f] y:[%f]",pose_msg.pose.pose.position.x,pose_msg.pose.pose.position.y);
+                    ROS_INFO("mode:[%d] theta:[%f] angular_n:[%f] abs(pose_msg.theta - angular_n):[%f]",mode,pose_msg.twist.twist.angular.z ,angular_n,std::abs(pose_msg.twist.twist.angular.z - angular_n));
+                    output_msg.linear.x = 0.2;
                     if((std::abs(pose_msg.pose.pose.position.x -xn) < 0.1) && (std::abs(pose_msg.pose.pose.position.y -yn) < 0.1))
                     {
                        mode = 0;
