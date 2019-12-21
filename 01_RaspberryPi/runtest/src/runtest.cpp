@@ -20,7 +20,7 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg);
 void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
    input_msg = *msg;
- //  ROS_INFO("Pose: [%f],[%f],[%f]", msg->x,msg->y,msg->theta);
+   ROS_INFO("Pose: [%f],[%f],[%f]", msg->x,msg->y,msg->theta);
 }
 
 int main(int argc, char **argv)
@@ -53,7 +53,7 @@ int main(int argc, char **argv)
                     if(std::abs(pose_msg.twist.twist.angular.z - angular_n) < 0.05 )
                     {
 
-                      mode = 1;
+                      //mode = 1;
                       output_msg.angular.z = 0;
 
                     }
