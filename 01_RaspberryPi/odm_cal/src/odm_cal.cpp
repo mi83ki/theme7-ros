@@ -7,7 +7,7 @@
 #include "bits/stdc++.h"
 
 #define WHEEL_R         (0.090)       /* 車輪半径(m) */
-#define WHEEL_TREAD     (0.125)       /* 車輪間距離(m) */
+#define WHEEL_TREAD     (0.115)       /* 車輪間距離(m) */
 #define RATE_REDC       (298.0)       /* 減速比 */
 #define RATE_ENC        (3.0)         /* モータ1回転に必要なエンコーダカウント数 */
 
@@ -211,7 +211,13 @@ void OdmPublisher::Time_Callback(const std_msgs::UInt32Ptr& time_msg)
 //  odm.header.frame_id = "odm";
   odm.pose.pose.position.x = odm_state.pose.pose.position.x;
   odm.pose.pose.position.y = odm_state.pose.pose.position.y;
-  odm.pose.pose.position.z = 0;
+  odm.pose.pose.position.z = 0.0;
+
+  //  θをpublishに追加
+  odm.pose.pose.orientation.x = 0.0;
+  odm.pose.pose.orientation.y = 0.0;
+  odm.pose.pose.orientation.z = odm_state.pose.pose.th;
+  odm.pose.pose.orientation.w = 0.0;
 
   odm.twist.twist.linear.x = odm_state.twist.twist.linear.vx;
   odm.twist.twist.linear.y = odm_state.twist.twist.linear.vy;
