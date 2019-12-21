@@ -9,12 +9,13 @@
 
 nav_msgs::Odometry input_msg;//subscribeしてくるpose型のメッセージを定義
 
-float kp1 = 0; //P制御の定数
+float kp1 = 0.2; //P制御の定数
 float kp2 = 0; //P制御の定数2
 const float point_array[4][2] = {{0.9,0},{0.9,0.9},{0,0.9},{0,0}};//pass point array {x,y}
 
 float calc_angle(const float x,const float xn1,const float y,const float yn1);
 void poseCallback(const nav_msgs::Odometry::ConstPtr& msg);
+float calc_omega_p(float theta_error);
 
 
 void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
@@ -85,11 +86,11 @@ int main(int argc, char **argv)
                              pose_msg.pose.pose.position.x - xn,
                              pose_msg.pose.pose.position.y - yn);  
                     output_msg.linear.x = 0.3;
-                    if(std::abs(temp - angular_n) > 0.3){
-		       mode = 0;
-                       output_msg.linear.x = 0;
-                    }
-
+                    //if(std::abs(temp - angular_n) > 0.3){
+		    //   mode = 0;
+                    //   output_msg.linear.x = 0;
+                    //}
+		    output_msg.angular.z = calc_omega_p(temp - angular_n);
                     if((std::abs(pose_msg.pose.pose.position.x -xn) < 0.1) && (std::abs(pose_msg.pose.pose.position.y -yn) < 0.1))
                     {
                        mode = 0;
@@ -112,11 +113,11 @@ int main(int argc, char **argv)
   return 0;
 }
 
-//float calc_omega_p(float x,float xn,float y,float yn,float theta){
-// float omega_p;
-// omega_p = -kp1*(atan((yn - y)/(xn - x)) - theta);
-// return omega_p;
-//}
+float calc_omega_p(float theta_error){
+ float omega_p;
+ omega_p = -kp1 * theta_error;
+ return omega_p;
+}
  //ωpを計算する関数
 
 float calc_angle(const float x,const float xn1,const float y,const float yn1){ //calculate theta to Goal
