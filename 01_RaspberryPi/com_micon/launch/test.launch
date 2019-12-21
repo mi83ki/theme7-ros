@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="com_micon" name="rosmarica_keyboard" type="rosmarica_keyboard"/>
+</launch>
