@@ -34,7 +34,4 @@ private:
   const int ENCODER_PULSE = 3;        // パルス数
   const float TIRE_DIAMETER = 0.09f;     // タイヤの直径[m] 
   const int DUTY_RESOLUTION_ = 100;
-
-
 };
-

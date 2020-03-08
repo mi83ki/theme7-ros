@@ -35,22 +35,6 @@ void SpeedControll::calcSpeed(arduino2StateType A2state, arduino1StateType *A1st
   if (diff_time != 0) {
     if(sum_time >= 100)
     {
-/*
-      Serial.print("sum_time:");
-      Serial.print(sum_time);
-      Serial.print(',');
-      Serial.print("sum_encR:");
-      Serial.print(sum_encR);
-      Serial.print(',');
-      Serial.print("sum_encL:");
-      Serial.print(sum_encL);
-      Serial.print(',');
-      Serial.print("now_encR:");
-      Serial.print(A2state.encR);
-      Serial.print(',');
-      Serial.print("now_encL:");
-      Serial.println(A2state.encL);      
-*/
       //角速度の計算
       A1st->omega_right = 2 * FIX_MUL(INT_TO_FIX(sum_encR), myPI);
       A1st->omega_right = FIX_DIV(A1st->omega_right, FIX_MUL(temp, sum_time));
@@ -61,12 +45,14 @@ void SpeedControll::calcSpeed(arduino2StateType A2state, arduino1StateType *A1st
       A1st->vel_right = FIX_MUL(A1st->omega_right, (myTireDiameter / 2));
       A1st->vel_left = FIX_MUL(A1st->omega_left, (myTireDiameter / 2));
 
+      //カウンターのリセット
       sum_time = 0;
       sum_encR = 0;
       sum_encL = 0;
     }
   }
 
+  //現在の値を保持
   last_encR = A2state.encR;
   last_encL = A2state.encL;
   last_time = A2state.time;
@@ -93,12 +79,7 @@ void SpeedControll::controllMotorsSpeed(fix torque_pid_right, fix torque_pid_lef
   fixcutoff(&duty_right, INT_TO_FIX(100), -INT_TO_FIX(100));
   fixcutoff(&duty_left, INT_TO_FIX(100), -INT_TO_FIX(100));
     
-//  Serial.print("duty:");
-//  Serial.print(FIX_TO_INT(duty_right));
-//  Serial.print(',');
-//  Serial.print(FIX_TO_INT(duty_left));
-//  Serial.print(',');
-
+  //デューティ比をint型に変換
   duty_status.duty_right = FIX_TO_INT(duty_right);
   duty_status.duty_left = FIX_TO_INT(duty_left);
   //driveMotors(FIX_TO_INT(duty_right), FIX_TO_INT(duty_left));
