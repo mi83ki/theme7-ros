@@ -19,7 +19,7 @@
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/UInt32.h>
-#include <std_msgs/UInt8.h>
+#include <std_msgs/Bool.h>
 
 #include "comA1andA2.hpp"
 #include "pid.hpp"
@@ -286,7 +286,7 @@ ros::Subscriber<geometry_msgs::Twist> sub2("arduino_cmd_vel", &messageCb2);
 //         バンパーステータスののパブリッシャー
 //-------------------------------------------------------
 // バンパートピック
-std_msgs::UInt8 bumper_msg;
+std_msgs::Bool bumper_msg;
 ros::Publisher pubBumper("Bumper", &bumper_msg);
 
 //-------------------------------------------------------
@@ -352,9 +352,37 @@ void loop() {
     power_right = pidControl(&pid_state_right, FILT_FREQ);   //PID制御量を計算
     power_left = pidControl(&pid_state_left, FILT_FREQ);
 
+<<<<<<< HEAD
     spdControll.controllMotorsSpeed(power_right, power_left, A1state);
     driveMotors(spdControll.duty_status.duty_right, spdControll.duty_status.duty_left);    //モーターにデューティ比を指令
   }
+=======
+  // ROSへの周期的なパブリッシュ
+  if (getTime() >= 50) {
+    startTimer();
+    
+    if (!nh.connected()) {   // rosserialが切れたら、再接続する
+      //nh.getHardware()->setBaud(74880);
+      nh.initNode();
+      nh.subscribe(sub2);
+      nh.advertise(pubBumper);
+      nh.advertise(pub3);
+      nh.advertise(pub4);
+      nh.advertise(pub5);
+      //Serial.print("reconnecting");  
+      while (!nh.connected()) {  
+        //Serial.print(".");  
+        nh.spinOnce();  
+        delay(1000);  
+      }  
+      //Serial.println("Connect.");  
+    } else {                    // rosserialが接続しているときの動作
+      // バンパー値をパブリッシュ
+      if (isBumperChanged(&bumperStatus)) {
+        bumper_msg.data = (bumperStatus == 0) ? false : true;
+        pubBumper.publish(&bumper_msg);
+      }
+>>>>>>> 73eb6941849e9e021119bec4c0cadd892c3fb967
 
     // ROSへの周期的なパブリッシュ
     if (getTime() >= 50) {
