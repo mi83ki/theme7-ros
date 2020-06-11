@@ -22,16 +22,24 @@
 #include <std_msgs/Bool.h>
 
 #include "comA1andA2.hpp"
+#include "pid.hpp"
+#include "fix.hpp"
+#include "SpeedController.hpp"
 
 /***********************************************************************/
 /*                           グローバル変数                            */
 /***********************************************************************/
+//PID用
+static pidType pid_state_right;
+static pidType pid_state_left;
+static arduino1StateType A1state;
 
 /***********************************************************************/
 /*                           モーター関数                              */
 /***********************************************************************/
 #define DUTY_RESOLUTION 100    // モーター制御のデューティ比の分解能
 #define PWM_RESOLUTION 8000    // マイコンのPWM波形1周期の分解能
+#define FILT_FREQ 100            //PID制御の周波数[hz] 
 
 /*     PIN設定    */
 //#define MOTOR_STBY_PIN 4
@@ -75,9 +83,9 @@ void initMotorsAndTimer1(void) {
   //------------------------
   //  タイマカウンタ1の設定
   //------------------------
-  TCCR1A = (1 << COM1A1)|(1 << COM1B1); // 比較一致でLow、BOTTOMでHighをOC1xﾋﾟﾝへ出力 (非反転動作)
+  TCCR1A = (1 << COM1A1) | (1 << COM1B1); // 比較一致でLow、BOTTOMでHighをOC1xﾋﾟﾝへ出力 (非反転動作)
   TCCR1A |= (1 << WGM11);               // 高速PWM動作（TOP値：ICR1）
-  TCCR1B = (1 << WGM13)|(1 << WGM12);   // 高速PWM動作（TOP値：ICR1）
+  TCCR1B = (1 << WGM13) | (1 << WGM12); // 高速PWM動作（TOP値：ICR1）
   OCR1A = PWM_RESOLUTION;               // 初期値
   OCR1B = PWM_RESOLUTION;               // 初期値
   ICR1 = 7999;                          // 8MHzクロック前置分周なしで1kHzのPWM波形＆割込み生成
@@ -96,15 +104,19 @@ void driveMotors(int32_t dutyR, int32_t dutyL) {
   // 右モーター
   //------------------------
   if (dutyR > 0) {                              // 正転させるとき
-    digitalWrite(MOTOR_AIN1_PIN, HIGH);
-    digitalWrite(MOTOR_AIN2_PIN, LOW);          // CW
+    //digitalWrite(MOTOR_AIN1_PIN, HIGH);         //通常版
+    //digitalWrite(MOTOR_AIN2_PIN, LOW);          // CW
+    digitalWrite(MOTOR_AIN1_PIN, LOW);
+    digitalWrite(MOTOR_AIN2_PIN, HIGH);          // CW
   } else if (dutyR == 0) {
     digitalWrite(MOTOR_AIN1_PIN, LOW);
     digitalWrite(MOTOR_AIN2_PIN, LOW);          // フリーストップ
   } else {                                      // 逆転させるとき
     dutyR *= -1;
-    digitalWrite(MOTOR_AIN1_PIN, LOW);
-    digitalWrite(MOTOR_AIN2_PIN, HIGH);         // CCW
+    //digitalWrite(MOTOR_AIN1_PIN, LOW);           //通常版
+    //digitalWrite(MOTOR_AIN2_PIN, HIGH);          // CCW
+    digitalWrite(MOTOR_AIN1_PIN, HIGH);
+    digitalWrite(MOTOR_AIN2_PIN, LOW);         // CCW
   }
   if (dutyR > DUTY_RESOLUTION) {                // 指定値がオーバーフローしているとき
     dutyR = DUTY_RESOLUTION;
@@ -164,27 +176,25 @@ void startTimer(void) {
 
 // タイマー値[ms]を取得する
 uint32_t getTime(void) {
-  return(millis() - tempTimer);
+  return (millis() - tempTimer);
 }
 
 // タイマー値[ms]を取得する
 uint32_t getGlobalTime(void) {
-  return(millis());
+  return (millis());
 }
-
-
 
 /***********************************************************************/
 /*                           バンパー関数                              */
 /***********************************************************************/
 
 void initBumper(void) {
-  pinMode(SEN_LL,INPUT);
-  pinMode(SEN_LC,INPUT);
-  pinMode(SEN_RC,INPUT);
-  pinMode(SEN_RR,INPUT);
-  pinMode(SEN_TR,OUTPUT);
-  digitalWrite(SEN_TR,HIGH);
+  pinMode(SEN_LL, INPUT);
+  pinMode(SEN_LC, INPUT);
+  pinMode(SEN_RC, INPUT);
+  pinMode(SEN_RR, INPUT);
+  pinMode(SEN_TR, OUTPUT);
+  digitalWrite(SEN_TR, HIGH);
 }
 
 uint8_t readBumper(void) {
@@ -195,7 +205,7 @@ uint8_t readBumper(void) {
   returnData |= (digitalRead(SEN_RC) << 1);
   returnData |= (digitalRead(SEN_RR) << 0);
 
-  return(returnData);
+  return (returnData);
 }
 
 // 引数のバンパー値を更新した上で、前回から変化したら1を、そうでなければ0を返す
@@ -205,19 +215,16 @@ uint8_t isBumperChanged(uint8_t *presentBumper) {
   *presentBumper = readBumper();
   if (*presentBumper != lastBumper) {
     lastBumper = *presentBumper;
-    return(1);
+    return (1);
   } else {
-    return(0);
+    return (0);
   }
 }
-
-
 
 /***********************************************************************/
 /*                               ROS関数                               */
 /***********************************************************************/
 ros::NodeHandle nh;
-
 
 //-------------------------------------------------------
 //             cmd_velのサブスクライバー
@@ -228,7 +235,6 @@ ros::NodeHandle nh;
 #define L_MOTOR_SPEC 1.0f // モーターの固有ばらつき補正値
 //#define L_MOTOR_SPEC 0.98f
 #define DUTY_MIN 15       // モーターが回転し始める最小のDUTY比
-
 
 void messageCb2(const geometry_msgs::Twist& twist) {
   const float linear_x = twist.linear.x;
@@ -250,29 +256,31 @@ void messageCb2(const geometry_msgs::Twist& twist) {
   } else if (velocityL < -MAX_VELOCITY) {
     velocityL = -MAX_VELOCITY;
   }
-  
+
+  //pid_state_right.desired = - FLOAT_TO_FIX(velocityR);
+  //pid_state_left.desired =  FLOAT_TO_FIX(velocityL);
+
   motorR = (int32_t)(velocityR / MAX_VELOCITY * 100.0 * R_MOTOR_SPEC);
   motorL = (int32_t)(velocityL / MAX_VELOCITY * 100.0 * L_MOTOR_SPEC);
 
-/*
-  // 0 ～ DUTY_RESOLUTIONの領域をDUTY_MIN ～ DUTY_RESOLUTION の領域に投影
-  if (motorR > 0) {
-    motorR = DUTY_MIN + motorR * (DUTY_RESOLUTION - DUTY_MIN) / DUTY_RESOLUTION;
-  } else if (motorR < 0) {
-    motorR = -DUTY_MIN + motorR * (DUTY_RESOLUTION - DUTY_MIN) / DUTY_RESOLUTION;
-  }
-  if (motorL > 0) {
-    motorL = DUTY_MIN + motorL * (DUTY_RESOLUTION - DUTY_MIN) / DUTY_RESOLUTION;
-  } else if (motorL < 0) {
-    motorL = -DUTY_MIN + motorL * (DUTY_RESOLUTION - DUTY_MIN) / DUTY_RESOLUTION;
-  }
-*/
-  driveMotors(motorR, motorL);
+  /*
+    // 0 ～ DUTY_RESOLUTIONの領域をDUTY_MIN ～ DUTY_RESOLUTION の領域に投影
+    if (motorR > 0) {
+      motorR = DUTY_MIN + motorR * (DUTY_RESOLUTION - DUTY_MIN) / DUTY_RESOLUTION;
+    } else if (motorR < 0) {
+      motorR = -DUTY_MIN + motorR * (DUTY_RESOLUTION - DUTY_MIN) / DUTY_RESOLUTION;
+    }
+    if (motorL > 0) {
+      motorL = DUTY_MIN + motorL * (DUTY_RESOLUTION - DUTY_MIN) / DUTY_RESOLUTION;
+    } else if (motorL < 0) {
+      motorL = -DUTY_MIN + motorL * (DUTY_RESOLUTION - DUTY_MIN) / DUTY_RESOLUTION;
+    }
+  */
+  //driveMotors(motorR, motorL);
 }
 
 // cmd_velを取得するサブスクライバー
 ros::Subscriber<geometry_msgs::Twist> sub2("arduino_cmd_vel", &messageCb2);
-
 
 //-------------------------------------------------------
 //         バンパーステータスののパブリッシャー
@@ -280,7 +288,6 @@ ros::Subscriber<geometry_msgs::Twist> sub2("arduino_cmd_vel", &messageCb2);
 // バンパートピック
 std_msgs::Bool bumper_msg;
 ros::Publisher pubBumper("Bumper", &bumper_msg);
-
 
 //-------------------------------------------------------
 //         エンコーダカウントのパブリッシャー
@@ -296,22 +303,25 @@ ros::Publisher pub3("A2_encR", &encR_msg);
 ros::Publisher pub4("A2_encL", &encL_msg);
 ros::Publisher pub5("A2_time", &time_msg);
 
-
-
-
 /***********************************************************************/
 /*                               main関数                              */
 /***********************************************************************/
 void setup() {
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH); 
+  digitalWrite(LED_BUILTIN, HIGH);
   // モーターの設定
   initMotorsAndTimer1();
   // バンパーの設定
   initBumper();
   // Arduino2とのI2C通信設定
   initComA1andA2(SLAVE);
+
+  //PIDパラメータの設定
+  initPID(&pid_state_right, KTT, &A1state.vel_right, FLOAT_TO_FIX(0.5), 0.3, 1.5, 0.0);
+  initPID(&pid_state_left, KTT, &A1state.vel_left, FLOAT_TO_FIX(0.5), 0.3, 1.5, 0.0);
+  //Serial.begin(115200);
+  delay(1000);
 }
 
 void loop() {
@@ -319,8 +329,14 @@ void loop() {
   static uint32_t startedTime;
   static uint8_t encUpdFlag = 0;
   static uint8_t encUpdFlag2 = 0;
-  // Arduino2の状態量
-  static arduino2StateType A2state;
+  static arduino2StateType A2state;       // Arduino2の状態量
+  SpeedControll spdControll;              //速度制御インスタンス生成
+  fix power_right = 10;
+  fix power_left = 10;
+  
+  //目標速度の設定
+  pid_state_right.desired = FLOAT_TO_FIX(0.5);
+  pid_state_left.desired = FLOAT_TO_FIX(0.5);
 
   // エンコーダ値更新処理
   if (isI2Crecieved()) {
@@ -329,12 +345,18 @@ void loop() {
     encUpdFlag2++;
   }
 
-  // 速度の計算
+  // 速度計算
   if (encUpdFlag2) {
     encUpdFlag2 = 0;
-    //calcState();
-  }
+    spdControll.calcSpeed(A2state, &A1state);                //現在速度の計算
+    power_right = pidControl(&pid_state_right, FILT_FREQ);   //PID制御量を計算
+    power_left = pidControl(&pid_state_left, FILT_FREQ);
 
+<<<<<<< HEAD
+    spdControll.controllMotorsSpeed(power_right, power_left, A1state);
+    driveMotors(spdControll.duty_status.duty_right, spdControll.duty_status.duty_left);    //モーターにデューティ比を指令
+  }
+=======
   // ROSへの周期的なパブリッシュ
   if (getTime() >= 50) {
     startTimer();
@@ -360,18 +382,45 @@ void loop() {
         bumper_msg.data = (bumperStatus == 0) ? false : true;
         pubBumper.publish(&bumper_msg);
       }
+>>>>>>> 73eb6941849e9e021119bec4c0cadd892c3fb967
 
-      // エンコーダ値をパブリッシュ
-      if (encUpdFlag) {
-        encUpdFlag = 0;
-        encR_msg.data = A2state.encR;
-        encL_msg.data = A2state.encL;
-        time_msg.data = A2state.time;
-        pub3.publish(&encR_msg);
-        pub4.publish(&encL_msg);
-        pub5.publish(&time_msg);
+    // ROSへの周期的なパブリッシュ
+    if (getTime() >= 50) {
+      startTimer();
+
+      if (!nh.connected()) {   // rosserialが切れたら、再接続する
+        //nh.getHardware()->setBaud(74880);
+        nh.initNode();
+        nh.subscribe(sub2);
+        nh.advertise(pubBumper);
+        nh.advertise(pub3);
+        nh.advertise(pub4);
+        nh.advertise(pub5);
+        //Serial.print("reconnecting");
+        while (!nh.connected()) {
+          //Serial.print(".");
+          nh.spinOnce();
+          delay(1000);
+        }
+        //Serial.println("Connect.");
+      } else {                    // rosserialが接続しているときの動作
+        // バンパー値をパブリッシュ
+        if (isBumperChanged(&bumperStatus)) {
+          bumper_msg.data = bumperStatus;
+          pubBumper.publish(&bumper_msg);
+        }
+
+        // エンコーダ値をパブリッシュ
+        if (encUpdFlag) {
+          encUpdFlag = 0;
+          encR_msg.data = A2state.encR;
+          encL_msg.data = A2state.encL;
+          time_msg.data = A2state.time;
+          pub3.publish(&encR_msg);
+          pub4.publish(&encL_msg);
+          pub5.publish(&time_msg);
+        }
       }
     }
-  }
-  nh.spinOnce();
+    nh.spinOnce(); 
 }

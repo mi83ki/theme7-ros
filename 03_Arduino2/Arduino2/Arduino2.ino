@@ -78,6 +78,7 @@ void writeEncoderCounts(int32_t eR, int32_t eL) {
 /*                           タイマー関数                              */
 /*        注：initMotor()によって1msの割込みが設定されている           */
 /***********************************************************************/
+
 // タイマーの初期化
 void initTimer1(void) {
   //------------------------
@@ -128,6 +129,7 @@ static uint8_t updateFlag = 0;
 
 void samplingA2(arduino2StateType *a2st) {
   A2state.time = getGlobalTime();
+  //A2state.time += TIMER1_PERIOD;
   getEncoderCounts(&A2state.encR, &A2state.encL);
 }
 
