@@ -22,7 +22,7 @@ void SpeedControll::calcSpeed(arduino2StateType A2state, arduino1StateType *A1st
   static const fix myTireDiameter = FLOAT_TO_FIX(TIRE_DIAMETER);
   static const fix myGearRagtio = INT_TO_FIX(GEAR_RATIO);
   static const fix myEncoderPulse = INT_TO_FIX(ENCODER_PULSE);
-  static const fix temp = FIX_MUL(myGearRagtio, myEncoderPulse);     
+  static const fix temp = FIX_MUL(myGearRagtio, myEncoderPulse);
   static fix diff_time = 0;       // m/s
 
   diff_time = INT_TO_FIX(A2state.time - last_time) / 1000;
@@ -31,9 +31,9 @@ void SpeedControll::calcSpeed(arduino2StateType A2state, arduino1StateType *A1st
   sum_time += diff_time;
   sum_encR += A2state.encR - last_encR;
   sum_encL += A2state.encL - last_encL;
-  
+
   if (diff_time != 0) {
-    if(sum_time >= 100)
+    if (sum_time >= 100)
     {
       //角速度の計算
       A1st->omega_right = 2 * FIX_MUL(INT_TO_FIX(sum_encR), myPI);
@@ -78,7 +78,7 @@ void SpeedControll::controllMotorsSpeed(fix torque_pid_right, fix torque_pid_lef
   //デューティ比の最大・最小値制限
   fixcutoff(&duty_right, INT_TO_FIX(100), -INT_TO_FIX(100));
   fixcutoff(&duty_left, INT_TO_FIX(100), -INT_TO_FIX(100));
-    
+
   //デューティ比をint型に変換
   duty_status.duty_right = FIX_TO_INT(duty_right);
   duty_status.duty_left = FIX_TO_INT(duty_left);
