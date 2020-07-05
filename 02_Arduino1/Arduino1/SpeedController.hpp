@@ -5,6 +5,15 @@
 #include "pid.hpp"
 #include "fix.hpp"
 
+
+typedef struct arduino1_state{
+  fix omega_right;
+  fix omega_left;
+  fix vel_right;
+  fix vel_left;
+} arduino1StateType;
+
+
 class SpeedControll
 {
   public:

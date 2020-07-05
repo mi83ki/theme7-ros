@@ -13,6 +13,9 @@
 #include <std_msgs/UInt32.h>
 #include <std_msgs/Bool.h>
 
+#include "CTimer.hpp"
+#include "CMotor.hpp"
+#include "CBumper.hpp"
 #include "comA1andA2.hpp"
 #include "pid.hpp"
 #include "fix.hpp"
@@ -24,221 +27,12 @@
 /*                           グローバル変数                            */
 /***********************************************************************/
 //PID用
-static pidType pid_state_right;
-static pidType pid_state_left;
-static arduino1StateType A1state;
+//static pidType pid_state_right;
+//static pidType pid_state_left;
+//static arduino1StateType A1state;
 
-/***********************************************************************/
-/*                           モーター関数                              */
-/***********************************************************************/
-#define DUTY_RESOLUTION 100    // モーター制御のデューティ比の分解能
-#define FILT_FREQ 100            //PID制御の周波数[hz] 
-
-#if ROSROBO_VER == 1     // 第一世代
-#define PWM_RESOLUTION 8000    // マイコンのPWM波形1周期の分解能
-/*     PIN設定    */
-#define MOTOR_AIN1_PIN 6
-#define MOTOR_AIN2_PIN 7
-#define MOTOR_PWMA_PIN 9
-#define MOTOR_BIN1_PIN 14
-#define MOTOR_BIN2_PIN 8
-#define MOTOR_PWMB_PIN 10
-#elif ROSROBO_VER == 2   // 第二世代
-#define PWM_RESOLUTION 16000   // マイコンのPWM波形1周期の分解能
-/*     PIN設定    */
-#define MOTOR_AIN1_PIN 6
-#define MOTOR_AIN2_PIN 7
-#define MOTOR_PWMA_PIN 9
-#define MOTOR_BIN1_PIN 8
-#define MOTOR_BIN2_PIN A0
-#define MOTOR_PWMB_PIN 10
-#endif
-
-
-// モーターの初期化
-void initMotorsAndTimer1(void) {
-  //------------------------
-  //  PIN設定
-  //------------------------
-  //pinMode(MOTOR_STBY_PIN, OUTPUT );
-  pinMode(MOTOR_AIN1_PIN, OUTPUT );
-  pinMode(MOTOR_AIN2_PIN, OUTPUT );
-  pinMode(MOTOR_PWMA_PIN, OUTPUT );
-  pinMode(MOTOR_BIN1_PIN, OUTPUT );
-  pinMode(MOTOR_BIN2_PIN, OUTPUT );
-  pinMode(MOTOR_PWMB_PIN, OUTPUT );
-
-  //------------------------
-  //  出力初期化
-  //------------------------
-  //digitalWrite(MOTOR_STBY_PIN, LOW);  // STBY出力を0に
-  digitalWrite(MOTOR_AIN1_PIN, LOW);  // A1出力を0に
-  digitalWrite(MOTOR_AIN2_PIN, LOW);  // A2出力を0に
-  //analogWrite(MOTOR_PWMA_PIN, 0);  // PWMA出力を0に
-  digitalWrite(MOTOR_BIN1_PIN, LOW);  // B1出力を0に
-  digitalWrite(MOTOR_BIN2_PIN, LOW);  // B2出力を0に
-  //analogWrite(MOTOR_PWMB_PIN, 0);  // PWMB出力を0に
-
-  //------------------------
-  //  タイマカウンタ1の設定
-  //------------------------
-  TCCR1A = (1 << COM1A1) | (1 << COM1B1); // 比較一致でLow、BOTTOMでHighをOC1xﾋﾟﾝへ出力 (非反転動作)
-  TCCR1A |= (1 << WGM11);               // 高速PWM動作（TOP値：ICR1）
-  TCCR1B = (1 << WGM13) | (1 << WGM12); // 高速PWM動作（TOP値：ICR1）
-  OCR1A = PWM_RESOLUTION;               // 初期値
-  OCR1B = PWM_RESOLUTION;               // 初期値
-  ICR1 = PWM_RESOLUTION - 1;            // 8MHz or 16MHzクロック前置分周なしで1kHzのPWM波形＆割込み生成
-  //TIMSK1 = (1 << ICIE1);                // ﾀｲﾏ/ｶｳﾝﾀ1捕獲割り込み許可
-  //sei();                                // 全割込み許可
-  TCCR1B |= (1 << CS10);                // 前置分周なしでタイマースタート
-}
-
-//-------------------------------------------------------
-// Function : driveMotors
-// 引数     : dutyR : 右モーターの電圧[％]（-100%～100%）
-//            dutyL : 左モーターの電圧[％]（-100%～100%）
-//-------------------------------------------------------
-void driveMotors(int32_t dutyR, int32_t dutyL) {
-  //------------------------
-  // 右モーター
-  //------------------------
-  if (dutyR > 0) {                              // 正転させるとき
-    digitalWrite(MOTOR_AIN1_PIN, HIGH);
-    digitalWrite(MOTOR_AIN2_PIN, LOW);          // CW
-  } else if (dutyR == 0) {
-    digitalWrite(MOTOR_AIN1_PIN, LOW);
-    digitalWrite(MOTOR_AIN2_PIN, LOW);          // フリーストップ
-  } else {                                      // 逆転させるとき
-    dutyR *= -1;
-    digitalWrite(MOTOR_AIN1_PIN, LOW);
-    digitalWrite(MOTOR_AIN2_PIN, HIGH);         // CCW
-  }
-  if (dutyR > DUTY_RESOLUTION) {                // 指定値がオーバーフローしているとき
-    dutyR = DUTY_RESOLUTION;
-  } else if (dutyR > 0) {
-    dutyR *= PWM_RESOLUTION / DUTY_RESOLUTION;  // PWMの分解能領域に投影
-    OCR1A = dutyR - 1;                          // PWM波形の設定
-  } else {
-    OCR1A = PWM_RESOLUTION;
-  }
-
-  //------------------------
-  // 左モーター
-  //------------------------
-  if (dutyL > 0) {                              // 正転させるとき
-    digitalWrite(MOTOR_BIN1_PIN, LOW);
-    digitalWrite(MOTOR_BIN2_PIN, HIGH);         // CCW
-  } else if (dutyL == 0) {
-    digitalWrite(MOTOR_BIN1_PIN, LOW);
-    digitalWrite(MOTOR_BIN2_PIN, LOW);          // フリーストップ
-  } else {                                      // 逆転させるとき
-    dutyL *= -1;
-    digitalWrite(MOTOR_BIN1_PIN, HIGH);
-    digitalWrite(MOTOR_BIN2_PIN, LOW);          // CW
-  }
-  if (dutyL > DUTY_RESOLUTION) {                // 指定値がオーバーフローしているとき
-    dutyL = DUTY_RESOLUTION;
-  } else if (dutyL > 0) {
-    dutyL *= PWM_RESOLUTION / DUTY_RESOLUTION;  // PWMの分解能領域に投影
-    OCR1B = dutyL - 1;                          // PWM波形の設定
-  } else {
-    OCR1B = PWM_RESOLUTION;
-  }
-}
-
-// モーターを止めたいとき
-void stopMotors(void) {
-  OCR1A = PWM_RESOLUTION;
-  OCR1B = PWM_RESOLUTION;
-  digitalWrite(MOTOR_BIN1_PIN, LOW);
-  digitalWrite(MOTOR_BIN2_PIN, LOW);            // フリーストップ
-  //digitalWrite(MOTOR_STBY_PIN, LOW);            // STBY出力を0にしてモーター無効
-}
-
-
-/***********************************************************************/
-/*                           タイマー関数                              */
-/*        注：initMotor()によって1msの割込みが設定されている           */
-/***********************************************************************/
-static uint32_t tempTimer;  // 1msの割り込みでインクリメントされる変数
-
-// タイマーをクリアする
-void startTimer(void) {
-  tempTimer = millis();
-}
-
-// タイマー値[ms]を取得する
-uint32_t getTime(void) {
-  return (millis() - tempTimer);
-}
-
-// タイマー値[ms]を取得する
-uint32_t getGlobalTime(void) {
-  return (millis());
-}
-
-/***********************************************************************/
-/*                           バンパー関数                              */
-/***********************************************************************/
-#if ROSROBO_VER == 1     // 第一世代
-#define SEN_LL 5
-#define SEN_LC 16
-#define SEN_RC 2
-#define SEN_RR 4
-#define SEN_TR 15
-
-void initBumper(void) {
-  pinMode(SEN_LL, INPUT);
-  pinMode(SEN_LC, INPUT);
-  pinMode(SEN_RC, INPUT);
-  pinMode(SEN_RR, INPUT);
-  pinMode(SEN_TR, OUTPUT);
-  digitalWrite(SEN_TR, HIGH);
-}
-
-uint8_t readBumper(void) {
-  uint8_t returnData = 0;
-
-  returnData |= (digitalRead(SEN_LL) << 3);
-  returnData |= (digitalRead(SEN_LC) << 2);
-  returnData |= (digitalRead(SEN_RC) << 1);
-  returnData |= (digitalRead(SEN_RR) << 0);
-
-  return (returnData);
-}
-
-#elif ROSROBO_VER == 2   // 第二世代
-#define BUMPER_1 A1
-
-void initBumper(void) {
-  pinMode(BUMPER_1, INPUT);
-}
-
-float readBumperVoltage(void) {
-  int sensorValue = analogRead(A1);
-  float voltage = sensorValue * (5.0f / 1023.0f);
-  return(voltage);
-}
-
-uint8_t readBumper(void) {
-  uint8_t returnData = 0;
-
-  return (returnData);
-}
-#endif
-
-// 引数のバンパー値を更新した上で、前回から変化したら1を、そうでなければ0を返す
-uint8_t isBumperChanged(uint8_t *presentBumper) {
-  static uint8_t lastBumper;    // バンパーの前回値
-
-  *presentBumper = readBumper();
-  if (*presentBumper != lastBumper) {
-    lastBumper = *presentBumper;
-    return (1);
-  } else {
-    return (0);
-  }
-}
+// モータークラス
+static CMotor gm;
 
 /***********************************************************************/
 /*                               ROS関数                               */
@@ -282,7 +76,7 @@ void messageCb2(const geometry_msgs::Twist& twist) {
   motorR = (int32_t)(velocityR / MAX_VELOCITY * 100.0 * R_MOTOR_SPEC);
   motorL = (int32_t)(velocityL / MAX_VELOCITY * 100.0 * L_MOTOR_SPEC);
 
-  driveMotors(motorR, motorL);
+  gm.driveMotors(motorR, motorL);
 }
 
 // cmd_velを取得するサブスクライバー
@@ -313,10 +107,6 @@ ros::Publisher pub5("A2_time", &time_msg);
 /*                               main関数                              */
 /***********************************************************************/
 void setup() {
-  // モーターの設定
-  initMotorsAndTimer1();
-  // バンパーの設定
-  initBumper();
   // Arduino2とのI2C通信設定
   initComA1andA2(SLAVE);
 
@@ -328,8 +118,12 @@ void setup() {
 }
 
 void loop() {
-  uint8_t bumperStatus = 0;
-  static uint32_t startedTime;
+  // バンパークラス
+  static CBumper gb;
+  // タイマークラス
+  static CTimer rosTimer;   // rosserial用
+  static CTimer bpTimer;    // バンパー用
+
   static uint8_t encUpdFlag = 0;
   static uint8_t encUpdFlag2 = 0;
   static arduino2StateType A2state;       // Arduino2の状態量
@@ -355,12 +149,18 @@ void loop() {
     power_right = pidControl(&pid_state_right, FILT_FREQ);   //PID制御量を計算
     power_left = pidControl(&pid_state_left, FILT_FREQ);
     spdControll.controllMotorsSpeed(power_right, power_left, A1state);
-    //driveMotors(spdControll.duty_status.duty_right, spdControll.duty_status.duty_left);    //モーターにデューティ比を指令
+    //gm.driveMotors(spdControll.duty_status.duty_right, spdControll.duty_status.duty_left);    //モーターにデューティ比を指令
   }
 */
+  // バンパーのサンプリング(Bumper.hppのSAMPLE_FREQ [Hz]で実行)
+  if (bpTimer.getTime() >= 50) {
+    bpTimer.startTimer();
+    gb.bumperSampling();
+  }
+
   // ROSへの周期的なパブリッシュ
-  if (getTime() >= 50) {
-    startTimer();
+  if (rosTimer.getTime() >= 50) {
+    rosTimer.startTimer();
 
     if (!nh.connected()) {   // rosserialが切れたら、再接続する
       nh.getHardware()->setBaud(115200);
@@ -374,13 +174,17 @@ void loop() {
       while (!nh.connected()) {
         //Serial.print(".");
         nh.spinOnce();
-        delay(1000);
+        digitalWrite(30,LOW);   // 接続できないときはLEDを点滅させる
+        delay(500);
+        digitalWrite(30,HIGH);
+        delay(500);
       }
       //Serial.println("Connect.");
     } else {                    // rosserialが接続しているときの動作
+      digitalWrite(30,HIGH);    // LED消灯
       // バンパー値をパブリッシュ
-      if (isBumperChanged(&bumperStatus)) {
-        bumper_msg.data = (bumperStatus == 0) ? false : true;
+      if (gb.isBumperChanged()) {
+        bumper_msg.data = gb.readBumper();
         pubBumper.publish(&bumper_msg);
       }
 
