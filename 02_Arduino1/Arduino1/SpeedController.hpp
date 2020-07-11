@@ -1,7 +1,7 @@
 //#include <iostream.h>
 #pragma once
 
-#include "comA1andA2.hpp"
+#include "CComArduinos.hpp"
 #include "pid.hpp"
 #include "fix.hpp"
 

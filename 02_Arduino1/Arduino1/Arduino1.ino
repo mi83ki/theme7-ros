@@ -16,12 +16,10 @@
 #include "CTimer.hpp"
 #include "CMotor.hpp"
 #include "CBumper.hpp"
-#include "comA1andA2.hpp"
+#include "CComArduinos.hpp"
 #include "pid.hpp"
 #include "fix.hpp"
 #include "SpeedController.hpp"
-
-#define ROSROBO_VER 2    // ROSロボのバージョン（第一世代：1、第二世代：2）
 
 /***********************************************************************/
 /*                           グローバル変数                            */
@@ -33,6 +31,7 @@
 
 // モータークラス
 static CMotor gm;
+
 
 /***********************************************************************/
 /*                               ROS関数                               */
@@ -107,12 +106,10 @@ ros::Publisher pub5("A2_time", &time_msg);
 /*                               main関数                              */
 /***********************************************************************/
 void setup() {
-  // Arduino2とのI2C通信設定
-  initComA1andA2(SLAVE);
-
   //PIDパラメータの設定
   //initPID(&pid_state_right, KTT, &A1state.vel_right, FLOAT_TO_FIX(0.5), 0.3, 1.5, 0.0);
   //initPID(&pid_state_left, KTT, &A1state.vel_left, FLOAT_TO_FIX(0.5), 0.3, 1.5, 0.0);
+
   //Serial.begin(115200);
   delay(1000);
 }
@@ -123,6 +120,8 @@ void loop() {
   // タイマークラス
   static CTimer rosTimer;   // rosserial用
   static CTimer bpTimer;    // バンパー用
+  // Arduino間通信クラス
+  static CComArduinos gc(SLAVE);
 
   static uint8_t encUpdFlag = 0;
   static uint8_t encUpdFlag2 = 0;
@@ -136,10 +135,15 @@ void loop() {
   //pid_state_left.desired = FLOAT_TO_FIX(0.5);
 
   // エンコーダ値更新処理
-  if (isI2Crecieved()) {
-    i2cSlaveRecieve(&A2state);
+  if (gc.isI2Crecieved()) {
+    gc.i2cSlaveRecieve();
     encUpdFlag++;
     encUpdFlag2++;
+    //Serial.print(gc.A2state.encR);
+    //Serial.print(", ");
+    //Serial.print(gc.A2state.encL);
+    //Serial.print(", ");
+    //Serial.println(gc.A2state.time);
   }
 /*
   // 速度計算
@@ -191,9 +195,9 @@ void loop() {
       // エンコーダ値をパブリッシュ
       if (encUpdFlag) {
         encUpdFlag = 0;
-        encR_msg.data = A2state.encR;
-        encL_msg.data = A2state.encL;
-        time_msg.data = A2state.time;
+        encR_msg.data = gc.A2state.encR;
+        encL_msg.data = gc.A2state.encL;
+        time_msg.data = gc.A2state.time;
         pub3.publish(&encR_msg);
         pub4.publish(&encL_msg);
         pub5.publish(&time_msg);
