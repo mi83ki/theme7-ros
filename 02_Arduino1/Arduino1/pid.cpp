@@ -160,5 +160,13 @@ void stopPID(pidType *pid) {
   pid->en = 0;  /* 無効にする */
 }
 
+uint8_t isEnable(pidType pid) {
+  return(pid.en);
+}
+
+void setPIDtarget(pidType *pid, fix target) {
+  pid->desired = target;
+}
+
 #endif
 

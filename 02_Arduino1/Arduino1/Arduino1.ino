@@ -13,24 +13,21 @@
 #include <std_msgs/UInt32.h>
 #include <std_msgs/Bool.h>
 
+#include "fix.hpp"
 #include "CTimer.hpp"
 #include "CMotor.hpp"
 #include "CBumper.hpp"
 #include "CComArduinos.hpp"
-#include "pid.hpp"
-#include "fix.hpp"
 #include "SpeedController.hpp"
+#include "COdometry.hpp"
+#include "CAccelController.hpp"
 
 /***********************************************************************/
 /*                           グローバル変数                            */
 /***********************************************************************/
-//PID用
-//static pidType pid_state_right;
-//static pidType pid_state_left;
-//static arduino1StateType A1state;
 
-// モータークラス
-static CMotor gm;
+// ROSからの速度指令
+static geometry_msgs::Twist gArduinoCmdVel;
 
 
 /***********************************************************************/
@@ -48,34 +45,10 @@ ros::NodeHandle nh;
 //#define L_MOTOR_SPEC 0.98f
 #define DUTY_MIN 15       // モーターが回転し始める最小のDUTY比
 
+// arduino_cmd_velが更新されたときに呼び出される関数
 void messageCb2(const geometry_msgs::Twist& twist) {
-  const float linear_x = twist.linear.x;
-  const float angular_z = twist.angular.z;
-  //int32_t linear_x = (int32_t)twist.linear.x;
-  //int32_t angular_z = (int32_t)twist.angular.z;
-  int32_t motorR = 0;
-  int32_t motorL = 0;
-  float velocityR = linear_x - WHEEL_TRACK * angular_z;
-  float velocityL = linear_x + WHEEL_TRACK * angular_z;
-
-  if (velocityR > MAX_VELOCITY) {
-    velocityR = MAX_VELOCITY;
-  } else if (velocityR < -MAX_VELOCITY) {
-    velocityR = -MAX_VELOCITY;
-  }
-  if (velocityL > MAX_VELOCITY) {
-    velocityL = MAX_VELOCITY;
-  } else if (velocityL < -MAX_VELOCITY) {
-    velocityL = -MAX_VELOCITY;
-  }
-
-  //pid_state_right.desired = - FLOAT_TO_FIX(velocityR);
-  //pid_state_left.desired =  FLOAT_TO_FIX(velocityL);
-
-  motorR = (int32_t)(velocityR / MAX_VELOCITY * 100.0 * R_MOTOR_SPEC);
-  motorL = (int32_t)(velocityL / MAX_VELOCITY * 100.0 * L_MOTOR_SPEC);
-
-  gm.driveMotors(motorR, motorL);
+  gArduinoCmdVel.linear.x = twist.linear.x;
+  gArduinoCmdVel.angular.z = twist.angular.z;
 }
 
 // cmd_velを取得するサブスクライバー
@@ -106,66 +79,73 @@ ros::Publisher pub5("A2_time", &time_msg);
 /*                               main関数                              */
 /***********************************************************************/
 void setup() {
-  //PIDパラメータの設定
-  //initPID(&pid_state_right, KTT, &A1state.vel_right, FLOAT_TO_FIX(0.5), 0.3, 1.5, 0.0);
-  //initPID(&pid_state_left, KTT, &A1state.vel_left, FLOAT_TO_FIX(0.5), 0.3, 1.5, 0.0);
-
   //Serial.begin(115200);
   delay(1000);
 }
 
 void loop() {
+  // モータークラス
+  static CMotor gm;
   // バンパークラス
   static CBumper gb;
   // タイマークラス
-  static CTimer rosTimer;   // rosserial用
-  static CTimer bpTimer;    // バンパー用
+  static CTimer bpTimer(BUMPER_CYCLE_TIME); // バンパー用
+  static CTimer spTimer(PID_CYCLE_TIME);    // 速度制御用
+  static CTimer rosTimer(50);               // rosserial用
   // Arduino間通信クラス
   static CComArduinos gc(SLAVE);
+  //速度制御インスタンス生成
+  static SpeedController spR;
+  static SpeedController spL;
+  // 加速制御
+  static CAccelController acR(PID_CYCLE_TIME);
+  static CAccelController acL(PID_CYCLE_TIME);
 
   static uint8_t encUpdFlag = 0;
-  static uint8_t encUpdFlag2 = 0;
-  static arduino2StateType A2state;       // Arduino2の状態量
-  //SpeedControll spdControll;              //速度制御インスタンス生成
-  //fix power_right = 10;
-  //fix power_left = 10;
-
-  //目標速度の設定
-  //pid_state_right.desired = FLOAT_TO_FIX(0.5);
-  //pid_state_left.desired = FLOAT_TO_FIX(0.5);
 
   // エンコーダ値更新処理
   if (gc.isI2Crecieved()) {
     gc.i2cSlaveRecieve();
     encUpdFlag++;
-    encUpdFlag2++;
-    //Serial.print(gc.A2state.encR);
-    //Serial.print(", ");
-    //Serial.print(gc.A2state.encL);
-    //Serial.print(", ");
-    //Serial.println(gc.A2state.time);
   }
-/*
-  // 速度計算
-  if (encUpdFlag2) {
-    encUpdFlag2 = 0;
-    spdControll.calcSpeed(A2state, &A1state);                //現在速度の計算
-    power_right = pidControl(&pid_state_right, FILT_FREQ);   //PID制御量を計算
-    power_left = pidControl(&pid_state_left, FILT_FREQ);
-    spdControll.controllMotorsSpeed(power_right, power_left, A1state);
-    //gm.driveMotors(spdControll.duty_status.duty_right, spdControll.duty_status.duty_left);    //モーターにデューティ比を指令
-  }
-*/
-  // バンパーのサンプリング(Bumper.hppのSAMPLE_FREQ [Hz]で実行)
-  if (bpTimer.getTime() >= 50) {
-    bpTimer.startTimer();
+
+  // バンパーのサンプリング(CBumper.hppのBUMPER_SAMPLE_FREQ [Hz]で実行)
+  if (bpTimer.isCycleTime()) {
     gb.bumperSampling();
   }
 
-  // ROSへの周期的なパブリッシュ
-  if (rosTimer.getTime() >= 50) {
-    rosTimer.startTimer();
+  // 速度制御
+  if (spTimer.isCycleTime()) {
+    //現在速度の計算
+    spR.calcVelocity(gc.A2state.encR, gc.A2state.time);
+    spL.calcVelocity(gc.A2state.encL, gc.A2state.time);
+    //加速制御
+    acR.setTargetVelocity(
+      COdometry::twist2velocityR(
+        FLOAT_TO_FIX(gArduinoCmdVel.linear.x),
+        FLOAT_TO_FIX(gArduinoCmdVel.angular.z)
+      )
+    );
+    acR.accelSpeed();
+    acL.setTargetVelocity(
+      COdometry::twist2velocityL(
+        FLOAT_TO_FIX(gArduinoCmdVel.linear.x),
+        FLOAT_TO_FIX(gArduinoCmdVel.angular.z)
+      )
+    );
+    acL.accelSpeed();
+    //目標速度の設定
+    spR.setTargetVelocity(acR.getPresentVelocity());
+    spL.setTargetVelocity(acL.getPresentVelocity());
+    //PID制御
+    spR.controlMotorsSpeed();
+    spL.controlMotorsSpeed();
+    //モーターにデューティ比を指令
+    gm.driveMotors(spR.getDuty(), spL.getDuty());
+  }
 
+  // ROSへの周期的なパブリッシュ
+  if (rosTimer.isCycleTime()) {
     if (!nh.connected()) {   // rosserialが切れたら、再接続する
       nh.getHardware()->setBaud(115200);
       nh.initNode();

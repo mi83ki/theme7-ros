@@ -18,7 +18,7 @@
 /*---------------------------------------------------------------------*/
 /*      例 (while内のif文がFILT_FREQで周期的に実行されるようにする)    */
 /*---------------------------------------------------------------------*/
-/* #include "pid.c"                                                    */
+/* #include "pid.hpp"                                                  */
 /*                                                                     */
 /* int main(void) {                                                    */
 /*   pidType pid1;   // PID制御構造体を作成                            */
@@ -98,6 +98,10 @@ typedef struct pid {        /* PID制御に関する構造体 */
 void initPID(pidType *pid, uint8_t md, fix *pre, fix des, float p, float i, float d);
 fix pidControl(pidType *pid, int16_t freq);
 char fixcutoff(fix *val, fix max, fix min);
-
+void startPID(pidType *pid, fix des);
+void stopPID(pidType *pid);
+uint8_t isEnable(pidType pid);
+void setPIDtarget(pidType *pid, fix target);
+  
 #endif
 

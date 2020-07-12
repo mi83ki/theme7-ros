@@ -53,7 +53,7 @@ CMotor::CMotor(void) {
 // 引数     : dutyR : 右モーターの電圧[％]（-100%～100%）
 //            dutyL : 左モーターの電圧[％]（-100%～100%）
 //-------------------------------------------------------
-void CMotor::driveMotors(int32_t dutyR, int32_t dutyL) {
+void CMotor::driveMotors(int16_t dutyR, int16_t dutyL) {
   //------------------------
   // 右モーター
   //------------------------

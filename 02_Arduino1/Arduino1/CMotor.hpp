@@ -32,7 +32,7 @@ class CMotor
 {
 public:
   CMotor(void);
-  void driveMotors(int32_t dutyR, int32_t dutyL);
+  void driveMotors(int16_t dutyR, int16_t dutyL);
   void stopMotors(void);
 private:
 };

@@ -16,10 +16,11 @@
 #include "CFilter.hpp"
 
 
-#define CUT_OFF_FREQ      (0.5f)    // ハイパスフィルタのカットオフ周波数[Hz]
-#define SAMPLE_FREQ       (20)      // サンプリング周波数[Hz]
-#define BUMPER_THRESHOLD  (5)       // バンパー接触判定しきい値[V]
-#define BUMPER_1          (A1)      // バンパーのPIN
+#define CUT_OFF_FREQ        (0.5f)    // ハイパスフィルタのカットオフ周波数[Hz]
+#define BUMPER_SAMPLE_FREQ  (20)      // サンプリング周波数[Hz]
+#define BUMPER_CYCLE_TIME   (1000 / BUMPER_SAMPLE_FREQ)    // サンプリング周期[ms]
+#define BUMPER_THRESHOLD    (5)       // バンパー接触判定しきい値[V]
+#define BUMPER_1            (A1)      // バンパーのPIN
 
 
 class CBumper

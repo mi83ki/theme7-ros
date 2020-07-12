@@ -17,6 +17,26 @@
 /*                           タイマー関数                              */
 /*        注：millis()を使用する                                       */
 /***********************************************************************/
+
+// コンストラクタ
+CTimer::CTimer() {
+  tempTimer = 0;
+}
+
+// コンストラクタ(周期[ms])
+CTimer::CTimer(uint16_t time) {
+  pastTime = 0;
+  cycleTime = time;
+}
+
+// 周期が来たことを知らせ、フラグをクリアする（1:周期がきた、0:周期でない）
+uint8_t CTimer::isCycleTime(void) {
+  uint32_t temp = millis() / (uint32_t)cycleTime;
+  uint32_t returnData = temp - pastTime;
+  pastTime = temp;
+  return(returnData);
+}
+
 // タイマーをクリアする
 void CTimer::startTimer(void) {
   tempTimer = millis();

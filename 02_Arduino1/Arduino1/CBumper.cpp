@@ -19,7 +19,7 @@ CBumper::CBumper(void)
   pinMode(BUMPER_1, INPUT);
 
   // 一次のローパスフィルタの初期設定
-  m_bpFilter = new CFirstFilter(HPF, CUT_OFF_FREQ, SAMPLE_FREQ);
+  m_bpFilter = new CFirstFilter(HPF, CUT_OFF_FREQ, BUMPER_SAMPLE_FREQ);
 }
 
 // デストラクタ

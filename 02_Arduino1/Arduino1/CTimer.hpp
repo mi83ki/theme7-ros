@@ -20,6 +20,12 @@
 class CTimer
 {
 public:
+  // コンストラクタ
+  CTimer();
+  // コンストラクタ(周期[ms])
+  CTimer(uint16_t cycleTime);
+  // 周期が来たことを知らせ、フラグをクリアする（1:周期がきた、0:周期でない）
+  uint8_t isCycleTime(void);
   // タイマーをクリアする
   void startTimer(void);
   // タイマー値[ms]を取得する
@@ -31,6 +37,8 @@ public:
 
 private:
   uint32_t tempTimer;  // 1msの割り込みでインクリメントされる変数
+  uint32_t pastTime;      // 前回の時間/周期
+  uint16_t cycleTime;     // チェックする周期[ms]
 };
 
 #endif  // _CTIMER_HPP__
