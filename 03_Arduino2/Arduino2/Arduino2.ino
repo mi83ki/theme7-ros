@@ -87,10 +87,10 @@ void loop() {
     updateFlag = 0;
     // Arduino1へ送信
     gc.i2cMasterTransmit();
-    Serial.print(gc.A2state.encR);
-    Serial.print(", ");
-    Serial.print(gc.A2state.encL);
-    Serial.print(", ");
-    Serial.println(gc.A2state.time);
+    //Serial.print(gc.A2state.encR);
+    //Serial.print(", ");
+    //Serial.print(gc.A2state.encL);
+    //Serial.print(", ");
+    //Serial.println(gc.A2state.time);
   }
 }

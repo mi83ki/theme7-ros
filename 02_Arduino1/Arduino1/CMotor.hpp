@@ -12,6 +12,7 @@
 #define _CMOTOR_HPP__
 
 #include <Arduino.h>
+#include "myconfig.hpp"
 
 /***********************************************************************/
 /*                         モーター駆動関数                            */
@@ -21,11 +22,26 @@
 
 #define PWM_RESOLUTION 16000   // マイコンのPWM波形1周期の分解能
 /*     PIN設定    */
-#define MOTOR_AIN1_PIN 6
-#define MOTOR_AIN2_PIN 7
+#ifdef MOTOR_REVERSE_RIGHT
+  // 逆転
+  #define MOTOR_AIN1_PIN 7
+  #define MOTOR_AIN2_PIN 6
+#else
+  // 正転
+  #define MOTOR_AIN1_PIN 6
+  #define MOTOR_AIN2_PIN 7
+#endif
 #define MOTOR_PWMA_PIN 9
-#define MOTOR_BIN1_PIN 8
-#define MOTOR_BIN2_PIN A0
+
+#ifdef MOTOR_REVERSE_LEFT
+  // 逆転
+  #define MOTOR_BIN1_PIN A0
+  #define MOTOR_BIN2_PIN 8
+#else
+  // 正転
+  #define MOTOR_BIN1_PIN 8
+  #define MOTOR_BIN2_PIN A0
+#endif
 #define MOTOR_PWMB_PIN 10
 
 class CMotor

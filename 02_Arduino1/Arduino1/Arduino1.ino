@@ -106,6 +106,12 @@ void loop() {
   // エンコーダ値更新処理
   if (gc.isI2Crecieved()) {
     gc.i2cSlaveRecieve();
+    #ifdef ENCODER_REVERSE_RIGHT
+    gc.A2state.encR *= -1;
+    #endif
+    #ifdef ENCODER_REVERSE_LEFT
+    gc.A2state.encL *= -1;
+    #endif
     encUpdFlag++;
   }
 
