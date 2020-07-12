@@ -18,8 +18,6 @@
 /*                         モーター駆動関数                            */
 /***********************************************************************/
 #define DUTY_RESOLUTION 100    // モーター制御のデューティ比の分解能
-#define FILT_FREQ 100            //PID制御の周波数[hz] 
-
 #define PWM_RESOLUTION 16000   // マイコンのPWM波形1周期の分解能
 /*     PIN設定    */
 #ifdef MOTOR_REVERSE_RIGHT

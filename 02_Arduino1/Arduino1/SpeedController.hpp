@@ -69,5 +69,6 @@ class SpeedController
     static const fix myDutyResolution;
     static const fix myVoltage2Duty;
     static const int16_t myPIDfreq;
+    static const fix myIntegMax;
 
 };

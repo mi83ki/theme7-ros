@@ -134,19 +134,6 @@ int8_t integErrCutoff(pidType *pid, fix max, fix min) {
   return(fixcutoff(&(pid->buf.integError), integErrMax, integErrMin));
 }
 
-
-/* 偏差の積分値を切り落とす */
-//fix intErrFilter(pidType *pid, int64_t out) {
-//  if (pid->gain[1].nume) {
-//    out *= (int64_t)pid->gain[1].deno;
-//    out /= (int64_t)pid->gain[1].nume;
-//    pid->buf.integError = (fix)out;
-//    return (pid->buf.integError);
-//  } else {
-//    return(0);
-//  }
-//}
-
 /* pidTypeと目標値をもらって，PID制御をスタートするときの関数 */
 void startPID(pidType *pid, fix des) {
   pid->en = 1;  /* 有効にして */

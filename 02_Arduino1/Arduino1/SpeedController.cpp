@@ -65,12 +65,14 @@ const fix SpeedController::myMaxVolt = FLOAT_TO_FIX(MAX_VOLT);
 const fix SpeedController::myDutyResolution = INT_TO_FIX(DUTY_RESOLUTION_);
 const fix SpeedController::myVoltage2Duty = FIX_DIV(myDutyResolution, myMaxVolt);
 const int16_t SpeedController::myPIDfreq = 1000 / PID_CYCLE_TIME;
+const fix SpeedController::myIntegMax = FIX_DIV(FIX_MUL(myMaxVolt, myKrTorque), myResistance);
 int16_t SpeedController::controlMotorsSpeed(void) {
   if (isEnable(pid_state)) {
     fix duty = 0;
     // PID制御量を計算
     fix torque_pid = pidControl(&pid_state, myPIDfreq);   
-    //duty = pidControl(&pid_state, myPIDfreq);   
+    // 積分項のカットオフ
+    integErrCutoff(&pid_state, myIntegMax, -1 * myIntegMax);
     //デューティ比計算
     duty = FIX_MUL(myResistance, torque_pid);
     duty = FIX_DIV(duty, myKrTorque);
