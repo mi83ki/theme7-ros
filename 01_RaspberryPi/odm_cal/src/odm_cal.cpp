@@ -1,14 +1,15 @@
 //#include "odm_cal.h"
 
-#include "ros/ros.h"
-#include "std_msgs/Int32.h"
-#include "std_msgs/UInt32.h"
-#include "nav_msgs/Odometry.h"
-#include "bits/stdc++.h"
+#include <ros/ros.h>
+#include <std_msgs/Int32.h>
+#include <std_msgs/UInt32.h>
+#include <nav_msgs/Odometry.h>
+#include <bits/stdc++.h>
+#include <tf/transform_broadcaster.h>
 
 #define WHEEL_R         (0.090)       /* 車輪半径(m) */
 #define WHEEL_TREAD     (0.115)       /* 車輪間距離(m) */
-#define RATE_REDC       (298.0)       /* 減速比 */
+#define RATE_REDC       (150.0)       /* 減速比 */
 #define RATE_ENC        (3.0)         /* モータ1回転に必要なエンコーダカウント数 */
 
 
@@ -150,8 +151,8 @@ void OdmPublisher::CalOdm()
   pre_time = time;
 
   /* 車輪の速度を計算 */
-  float_t wheel_v_L = (float_t) (2 * M_PI * WHEEL_R * delta_enc.L) / (RATE_ENC * RATE_REDC * delta_t);
-  float_t wheel_v_R = (float_t) (2 * M_PI * WHEEL_R * delta_enc.R) / (RATE_ENC * RATE_REDC * delta_t);
+  float_t wheel_v_L = (float_t) (M_PI * WHEEL_R * delta_enc.L) / (RATE_ENC * RATE_REDC * delta_t);
+  float_t wheel_v_R = (float_t) (M_PI * WHEEL_R * delta_enc.R) / (RATE_ENC * RATE_REDC * delta_t);
 
   /* 車体の速度と回転角速度を計算 */
   float_t agv_vel = (wheel_v_L + wheel_v_R) / 2;
