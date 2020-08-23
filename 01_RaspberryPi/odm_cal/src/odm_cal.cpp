@@ -73,6 +73,7 @@ class OdmPublisher
 
     uint32_t  time;
     encType   enc;
+    odmType   odm_state;
 
     uint32_t  pre_time;
     encType   pre_enc;
@@ -83,12 +84,10 @@ class OdmPublisher
 OdmPublisher::OdmPublisher():
   time(0),
   enc(),
-  delta_enc(),
-  agv_vel(0),
   odm_state(),
   pre_time(0),
-  pre_agv_vel(0.0),
   pre_enc(),
+  pre_agv_vel(0.0),
   pre_odm_state()
 {
   ROS_INFO("[odm_cal] init");
@@ -161,7 +160,6 @@ void OdmPublisher::CalOdm()
   int32_t *agv_twist_ptr;
 
   //agv_twist_ptr = &odm_state.twist.twist.angular;
-  odmType odm_state = {0};
   odm_state.twist.twist.angular.omega_z = (wheel_v_R - wheel_v_L) / (WHEEL_TREAD); //WHEEL_Tトレッド
   ROS_INFO("[odm_cal] agv_vel = %f, omega = %f", agv_vel, odm_state.twist.twist.angular.omega_z);
 
@@ -195,7 +193,7 @@ void OdmPublisher::CalOdm()
   //odm.pose.pose.orientation.y = 0.0;
   //odm.pose.pose.orientation.z = odm_state.pose.pose.th;
   //odm.pose.pose.orientation.w = 0.0;
-  odm.pose.pose.orientation = tf::createQuaternionMsgFromYaw(state_odom_th);
+  odm.pose.pose.orientation = tf::createQuaternionMsgFromYaw(odm_state.pose.pose.th);
 
   odm.twist.twist.linear.x = odm_state.twist.twist.linear.vx;
   odm.twist.twist.linear.y = odm_state.twist.twist.linear.vy;
