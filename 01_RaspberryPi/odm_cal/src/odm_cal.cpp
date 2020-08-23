@@ -190,10 +190,11 @@ void OdmPublisher::CalOdm()
   odm.pose.pose.position.z = 0.0;
 
   //  θをpublishに追加
-  odm.pose.pose.orientation.x = 0.0;
-  odm.pose.pose.orientation.y = 0.0;
-  odm.pose.pose.orientation.z = odm_state.pose.pose.th;
-  odm.pose.pose.orientation.w = 0.0;
+  //odm.pose.pose.orientation.x = 0.0;
+  //odm.pose.pose.orientation.y = 0.0;
+  //odm.pose.pose.orientation.z = odm_state.pose.pose.th;
+  //odm.pose.pose.orientation.w = 0.0;
+  odm.pose.pose.orientation = tf::createQuaternionMsgFromYaw(state_odom_th);
 
   odm.twist.twist.linear.x = odm_state.twist.twist.linear.vx;
   odm.twist.twist.linear.y = odm_state.twist.twist.linear.vy;
