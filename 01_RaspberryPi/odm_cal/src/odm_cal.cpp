@@ -16,101 +16,79 @@
 #define DEBUG
 #define DEBUG_SUBSC
 
-typedef struct {
-  struct {
-    struct {
-      struct {
-        float_t x;
-        float_t y;
-        float_t z;
-      } position;
-
-      float_t th;
-    } pose;
-  } pose;
-
-  struct {
-    struct {
-      struct {
-        float_t vx;
-        float_t vy;
-        float_t vz;
-      } linear;
-
-      struct {
-        float_t omega_x;
-        float_t omega_y;
-        float_t omega_z;
-      } angular;
-    } twist;
-  } twist;
-} odmType;
-
-typedef struct {
-  int32_t L;
-  int32_t R;
-} encType;
-
 class OdmPublisher
 {
   public:
-    OdmPublisher(): time(0), enc(), delta_enc(), agv_vel(0), odm_state()
-    {}
-
+    OdmPublisher();
     void CalOdm();
-    //  void ~CalOdm();
-    void InitOdm();
 
-  protected:
+  private:
+    typedef struct {
+      struct {
+        struct {
+          struct {
+            float_t x;
+            float_t y;
+            float_t z;
+          } position;
+    
+          float_t th;
+        } pose;
+      } pose;
+    
+      struct {
+        struct {
+          struct {
+            float_t vx;
+            float_t vy;
+            float_t vz;
+          } linear;
+    
+          struct {
+            float_t omega_x;
+            float_t omega_y;
+            float_t omega_z;
+          } angular;
+        } twist;
+      } twist;
+    } odmType;
+    
+    typedef struct {
+      int32_t L;
+      int32_t R;
+    } encType;
+
     void EncL_Callback(const std_msgs::Int32Ptr& encL_msg);
     void EncR_Callback(const std_msgs::Int32Ptr& encR_msg);
     void Time_Callback(const std_msgs::UInt32Ptr& time_msg);
 
     ros::Time         cuurent_time;
     ros::Publisher    odm_pub;
-
     ros::Subscriber   encL_sub;
     ros::Subscriber   encR_sub;
     ros::Subscriber   enc_time_sub;
-
     //ros::Subscriber sub_gazebo;   ///<gazebo_msgs入力ハンドラdelta_enc
     //ros::Publisher pub_pose;      ///<ロボット位置Pose 発行ハンドラ
 
-    uint32_t time;
-
+    uint32_t  time;
     encType   enc;
-    encType   delta_enc;
-    float_t   agv_vel;
-    odmType   odm_state;
 
-    static uint32_t pre_time;
-
-    static encType   pre_enc;
-    static float_t   pre_agv_vel;
-    static odmType   pre_odm_state;
+    uint32_t  pre_time;
+    encType   pre_enc;
+    float_t   pre_agv_vel;
+    odmType   pre_odm_state;
 };
 
-//int32_t OdmPublisher::enc_L;
-//int32_t OdmPublisher::enc_R;
-//uint32_t OdmPublisher::time;
-
-
-int32_t enc_L, enc_R;
-uint32_t OdmPublisher::pre_time;
-encType OdmPublisher::pre_enc;
-float_t OdmPublisher::pre_agv_vel;
-odmType OdmPublisher::pre_odm_state;
-
-void OdmPublisher::InitOdm()
-{
-  pre_time = 0;
-  pre_agv_vel = 0.0;
-  odmType odm_state = {0.0};
-  encType pre_enc = {0};
-  odmType pre_odm_state = {0.0};
-}
-
-void OdmPublisher::CalOdm()
+OdmPublisher::OdmPublisher():
+  time(0),
+  enc(),
+  delta_enc(),
+  agv_vel(0),
+  odm_state(),
+  pre_time(0),
+  pre_agv_vel(0.0),
+  pre_enc(),
+  pre_odm_state()
 {
   ROS_INFO("[odm_cal] init");
   ros::NodeHandle n;
@@ -121,20 +99,12 @@ void OdmPublisher::CalOdm()
   odm_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
 
   ROS_INFO("[odm_cal] START");
-
 }
-
-/*
-  void OdmPublisher::~CalOdm()
-  {
-
-  }
-*/
 
 void OdmPublisher::EncL_Callback(const std_msgs::Int32Ptr& encL_msg)
 {
   enc.L = encL_msg->data;
-  //    ROS_INFO("pub enc.L %d", enc_L);
+  //    ROS_INFO("pub enc.L %d", enc.L);
 }
 
 void OdmPublisher::EncR_Callback(const std_msgs::Int32Ptr& encR_msg)
@@ -148,15 +118,20 @@ void OdmPublisher::Time_Callback(const std_msgs::UInt32Ptr& time_msg)
   //ROS_INFO("pub time %d", time);
 
   time = static_cast<double>(time_msg->data);
+  CalOdm();
+}
 
+void OdmPublisher::CalOdm()
+{
   /* エンコーダ加算値とサンプリング時間を計算 */
   if (time == pre_time) {
     return;
   }
-  ROS_INFO("[odm_cal] d_encL,R %d %d", delta_enc.L, delta_enc.R);
 
+  encType   delta_enc;
   delta_enc.L = enc.L - pre_enc.L;
   delta_enc.R = enc.R - pre_enc.R;
+  ROS_INFO("[odm_cal] d_encL,R %d %d", delta_enc.L, delta_enc.R);
 
   float_t delta_t = (time - pre_time) * 0.001;
   ROS_INFO("[odm_cal] dt = %f", delta_t);
@@ -179,12 +154,13 @@ void OdmPublisher::Time_Callback(const std_msgs::UInt32Ptr& time_msg)
   float_t wheel_v_R = (float_t) (2 * M_PI * WHEEL_R * delta_enc.R) / (RATE_ENC * RATE_REDC * delta_t);
 
   /* 車体の速度と回転角速度を計算 */
-  agv_vel = (wheel_v_L + wheel_v_R) / 2;
+  float_t agv_vel = (wheel_v_L + wheel_v_R) / 2;
 
   int32_t *agv_posi_ptr;
   int32_t *agv_twist_ptr;
 
   //agv_twist_ptr = &odm_state.twist.twist.angular;
+  odmType odm_state = {0};
   odm_state.twist.twist.angular.omega_z = (wheel_v_R - wheel_v_L) / (WHEEL_TREAD); //WHEEL_Tトレッド
   ROS_INFO("[odm_cal] agv_vel = %f, omega = %f", agv_vel, odm_state.twist.twist.angular.omega_z);
 
@@ -238,7 +214,6 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "odm_cal");
   OdmPublisher OdmPub;
 
-  OdmPub.InitOdm();
   OdmPub.CalOdm();
 
   ros::spin();
